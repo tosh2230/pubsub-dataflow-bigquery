@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  pubsub-dataflow-bigquery
+Parameters: 
+  AwsSsmParamName:
+    Description: AWS Systems Manager Parameter Store name for a GCP service account key
+    Type: String
+    Default: "parameter store name"
+  GcpProjectId:
+    Description: GCP Project ID
+    Type: String
+    Default: "gcp project id"
+  GcpPubsubTtopicId:
+    Description: GCP Pub/Sub Topic ID
+    Type: String
+    Default: "gcp pub/sub topic id"
+
+Resources:
+  FunctionPublisher:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: pubsub_publisher
+      CodeUri: src/pubsub_publisher/
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.9
+      MemorySize: 128
+      Tracing: Active
+      Timeout: 30
+      Environment:
+        Variables: 
+          AWS_SSM_PARAM_NAME: !Ref AwsSsmParamName
+          GCP_PROJECT_ID: !Ref GcpProjectId
+          GCP_PUBSUB_TOPIC_ID: !Ref GcpPubsubTtopicId
+      Policies:
+        - AmazonSSMReadOnlyAccess
+      Events:
+        PubsubPublisherScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 minute)
