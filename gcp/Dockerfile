@@ -7,5 +7,5 @@ RUN pip3 install --upgrade pip
 RUN pip3 install -r /tmp/requirements.txt
 
 COPY ./schema/ /tmp/
-COPY ./src/ /tmp/
+COPY ./taxirides-realtime.py /tmp/
 COPY ./start_streaming.sh /tmp/

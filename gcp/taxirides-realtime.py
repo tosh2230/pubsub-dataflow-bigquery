@@ -48,6 +48,12 @@ def main(
             write_disposition=BigQueryDisposition.WRITE_APPEND,
             insert_retry_strategy=RetryStrategy.RETRY_ON_TRANSIENT_ERROR,
             schema=output_table_schema,
+            additional_bq_parameters={
+                "timePartitioning": {
+                    "type": "DAY",
+                    "field": "timestamp",
+                }
+            },
         )
 
         _ = error_rows | "Write errors to BigQuery" >> WriteToBigQuery(
