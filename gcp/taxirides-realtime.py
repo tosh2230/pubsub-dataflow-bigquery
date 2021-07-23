@@ -32,37 +32,39 @@ def main(
     beam_args: List[str] = None,) -> None:
 
     options = PipelineOptions(beam_args, save_main_session=True, streaming=True)
-    with Pipeline(options=options) as pipeline:
-        rows, error_rows = (
-            pipeline
-            | "Read from Pub/Sub" >> ReadFromPubSub(subscription=input_subscription)
-                .with_output_types(bytes)
-            | "UTF-8 bytes to string" >> Map(lambda msg: msg.decode("utf-8"))
-            | "Parse JSON messages" >> ParDo(ParseMessage())
-                .with_outputs(ParseMessage.OUTPUT_ERROR_TAG,main='rows')
-        )
+    pipeline = Pipeline(options=options)
+    rows, error_rows = (
+        pipeline
+        | "Read from Pub/Sub" >> ReadFromPubSub(subscription=input_subscription)
+            .with_output_types(bytes)
+        | "UTF-8 bytes to string" >> Map(lambda msg: msg.decode("utf-8"))
+        | "Parse JSON messages" >> ParDo(ParseMessage())
+            .with_outputs(ParseMessage.OUTPUT_ERROR_TAG,main='rows')
+    )
 
-        _ = rows | "Write messages to BigQuery" >> WriteToBigQuery(
-            output_table,
-            create_disposition=BigQueryDisposition.CREATE_IF_NEEDED,
-            write_disposition=BigQueryDisposition.WRITE_APPEND,
-            insert_retry_strategy=RetryStrategy.RETRY_ON_TRANSIENT_ERROR,
-            schema=output_table_schema,
-            additional_bq_parameters={
-                "timePartitioning": {
-                    "type": "DAY",
-                    "field": "timestamp",
-                }
-            },
-        )
+    _ = rows | "Write messages to BigQuery" >> WriteToBigQuery(
+        output_table,
+        create_disposition=BigQueryDisposition.CREATE_IF_NEEDED,
+        write_disposition=BigQueryDisposition.WRITE_APPEND,
+        insert_retry_strategy=RetryStrategy.RETRY_ON_TRANSIENT_ERROR,
+        schema=output_table_schema,
+        additional_bq_parameters={
+            "timePartitioning": {
+                "type": "DAY",
+                "field": "timestamp",
+            }
+        },
+    )
 
-        _ = error_rows | "Write errors to BigQuery" >> WriteToBigQuery(
-            output_error_table,
-            create_disposition=BigQueryDisposition.CREATE_IF_NEEDED,
-            write_disposition=BigQueryDisposition.WRITE_APPEND,
-            insert_retry_strategy=RetryStrategy.RETRY_ON_TRANSIENT_ERROR,
-            schema=output_table_schema,
-        )
+    _ = error_rows | "Write errors to BigQuery" >> WriteToBigQuery(
+        output_error_table,
+        create_disposition=BigQueryDisposition.CREATE_IF_NEEDED,
+        write_disposition=BigQueryDisposition.WRITE_APPEND,
+        insert_retry_strategy=RetryStrategy.RETRY_ON_TRANSIENT_ERROR,
+        schema=output_table_schema,
+    )
+
+    pipeline.run()
 
 def parse_args() -> Union[argparse.Namespace ,List[str]]:
     parser = argparse.ArgumentParser()
