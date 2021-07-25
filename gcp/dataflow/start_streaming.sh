@@ -3,7 +3,6 @@
 SUBSCRIPTION="taxirides_realtime"
 DATASET="beam_streaming"
 
-# https://cloud.google.com/dataflow/docs/guides/setting-pipeline-options#setting-other-cloud-dataflow-pipeline-options
 python3 /tmp/taxirides-realtime.py \
     --project=${GCP_PROJECT} \
     --input_subscription="projects/${GCP_PROJECT}/subscriptions/${SUBSCRIPTION}" \
@@ -14,5 +13,6 @@ python3 /tmp/taxirides-realtime.py \
     --enable_streaming_engine \
     --region='us-central1' \
     --autoscaling_algorithm=NONE \
+    --worker_machine_type='n1-standard-2' \
     --num_workers=1 \
     --max_num_workers=1

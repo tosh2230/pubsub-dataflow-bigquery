@@ -35,8 +35,11 @@ def main(
     pipeline = Pipeline(options=options)
     rows, error_rows = (
         pipeline
-        | "Read from Pub/Sub" >> ReadFromPubSub(subscription=input_subscription)
-            .with_output_types(bytes)
+        | "Read from Pub/Sub" >> ReadFromPubSub(
+                subscription=input_subscription,
+                with_attributes=True,
+                id_label='message_id'
+            ).with_output_types(bytes)
         | "UTF-8 bytes to string" >> Map(lambda msg: msg.decode("utf-8"))
         | "Parse JSON messages" >> ParDo(ParseMessage())
             .with_outputs(ParseMessage.OUTPUT_ERROR_TAG,main='rows')
