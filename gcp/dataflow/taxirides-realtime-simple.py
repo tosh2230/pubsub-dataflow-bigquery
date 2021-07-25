@@ -13,16 +13,15 @@ def get_schema(output_table) -> str:
     with open(f'/tmp/{output_table}') as file:
         return ','.join([line.strip() for line in file.readlines()])
 
-class ParseMessage(DoFn):
+class ParseLine(DoFn):
     OUTPUT_ERROR_TAG = 'error'
     
-    def process(self, message):
+    def process(self, line):
         try:
-            # attributes =  message.attributes
-            # data = json.loads(message.data)
-            yield json.loads(message.data)
+            parsed_row = json.loads(line)
+            yield parsed_row
         except Exception as error:
-            error_row = json.loads(message.data)
+            error_row = json.loads(line)
             yield TaggedOutput(self.OUTPUT_ERROR_TAG, error_row)
 
 def main(
@@ -37,12 +36,12 @@ def main(
     rows, error_rows = (
         pipeline
         | "Read from Pub/Sub" >> ReadFromPubSub(
-                subscription=input_subscription,
-                with_attributes=True,
-                id_label='message_id'
+                subscription=input_subscription
             )
-        | "Parse JSON messages" >> ParDo(ParseMessage())
-            .with_outputs(ParseMessage.OUTPUT_ERROR_TAG,main='rows')
+            .with_output_types(bytes)
+        | "UTF-8 bytes to string" >> Map(lambda msg: msg.decode("utf-8"))
+        | "Parse JSON messages" >> ParDo(ParseLine())
+            .with_outputs(ParseLine.OUTPUT_ERROR_TAG,main='rows')
     )
 
     _ = rows | "Write messages to BigQuery" >> WriteToBigQuery(
