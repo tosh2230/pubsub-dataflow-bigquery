@@ -13,14 +13,14 @@ def get_schema(output_table) -> str:
     with open(f'/tmp/{output_table}') as file:
         return ','.join([line.strip() for line in file.readlines()])
 
+
 class ParseMessage(DoFn):
     OUTPUT_ERROR_TAG = 'error'
     
     def process(self, message):
         try:
-            # attributes =  message.attributes
-            # data = json.loads(message.data)
-            yield json.loads(message.data)
+            data = json.loads(message.data)
+            yield data
         except Exception as error:
             error_row = json.loads(message.data)
             yield TaggedOutput(self.OUTPUT_ERROR_TAG, error_row)

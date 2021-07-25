@@ -12,7 +12,6 @@ python3 /tmp/taxirides-realtime.py \
     --runner DataflowRunner \
     --enable_streaming_engine \
     --region='us-central1' \
-    --autoscaling_algorithm=NONE \
     --worker_machine_type='n1-standard-2' \
     --num_workers=1 \
-    --max_num_workers=1
+    --max_num_workers=3
