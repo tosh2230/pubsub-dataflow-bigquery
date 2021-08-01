@@ -1,6 +1,6 @@
 # pubsub-dataflow-bigquery
 
-A sample 
+A sample code of Google Cloud Dataflow for 'Exactly-Once' streaming insertion, from Google Cloud Pub/Sub to Google BigQuery.
 
 ```sh
 bash ./setup.sh
