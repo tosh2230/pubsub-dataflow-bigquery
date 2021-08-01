@@ -1,7 +1,8 @@
 # pubsub-dataflow-bigquery
 
+A sample 
+
 ```sh
-cd ./gcp
 bash ./setup.sh
 
 cd ./dataflow
