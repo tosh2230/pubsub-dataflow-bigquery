@@ -14,4 +14,4 @@ python3 /tmp/taxirides-realtime.py \
     --region='us-central1' \
     --worker_machine_type='n1-standard-2' \
     --num_workers=1 \
-    --max_num_workers=3
+    --max_num_workers=1
