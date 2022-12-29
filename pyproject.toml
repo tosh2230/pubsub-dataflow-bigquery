@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "pubsub-dataflow-bigquery"
+version = "0.1.0"
+description = ""
+authors = ["tosh2230 <rev.to12@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+apache-beam = {version = "^2.43.0", extras = ["gcp"]}
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.2.0"
+black = "^22.12.0"
+pytest-mock = "^3.10.0"
+flake8 = "^6.0.0"
+isort = "^5.11.4"
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.pytest.ini_options]
+addopts = "--tb=native"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
