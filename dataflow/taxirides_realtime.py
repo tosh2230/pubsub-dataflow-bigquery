@@ -1,6 +1,6 @@
 import argparse
 import json
-from logging import WARN, getLogger
+from logging import INFO, getLogger
 
 from apache_beam import DoFn, ParDo, Pipeline
 from apache_beam.io import BigQueryDisposition, ReadFromPubSub, WriteToBigQuery
@@ -11,15 +11,27 @@ from apache_beam.pvalue import TaggedOutput
 VALID_TAG = "valid"
 INVALID_TAG = "invalid"
 
+logger = getLogger()
+logger.setLevel(INFO)
+
 
 class ParseMessage(DoFn):
     def __init__(self):
         super(ParseMessage, self).__init__()
 
-    def process(self, message):
+    def process(
+        self,
+        element,
+        timestamp=DoFn.TimestampParam,
+        window=DoFn.WindowParam,
+    ):
+        logger.warning(element)
+        logger.warning(timestamp)
+        logger.warning(window)
+        data = json.loads(element.data.decode("utf-8"))
+
         try:
             transformed = {}
-            data = json.loads(message.data.decode("utf-8"))
             transformed["ride_id"] = data["ride_id"]
             transformed["point_idx"] = data["point_idx"]
             transformed["latitude"] = data["latitude"]
@@ -27,7 +39,7 @@ class ParseMessage(DoFn):
             yield transformed
         except Exception:
             invalid = {}
-            invalid["data"] = message.data.decode("utf-8")
+            invalid["data"] = json.dumps(data)
             yield TaggedOutput(INVALID_TAG, invalid)
 
 
@@ -45,7 +57,11 @@ def main(
     beam_args: list[str] = None,
 ) -> None:
 
-    options = PipelineOptions(beam_args, save_main_session=True, streaming=True)
+    options = PipelineOptions(
+        beam_args,
+        save_main_session=True,
+        streaming=True,
+    )
     pipeline = Pipeline(options=options)
     rows, error_rows = (
         pipeline
@@ -98,8 +114,6 @@ def parse_args() -> argparse.Namespace | list[str]:
 
 
 if __name__ == "__main__":
-    logger = getLogger()
-    logger.setLevel(WARN)
     args, beam_args = parse_args()
     main(
         input_subscription=args.input_subscription,
