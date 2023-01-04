@@ -35,7 +35,11 @@ def main(
     beam_args: List[str] = None,
 ) -> None:
 
-    options = PipelineOptions(beam_args, save_main_session=True, streaming=True,)
+    options = PipelineOptions(
+        beam_args,
+        save_main_session=True,
+        streaming=True,
+    )
     pipeline = Pipeline(options=options)
     rows, error_rows = (
         pipeline
