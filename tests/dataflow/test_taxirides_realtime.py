@@ -4,6 +4,7 @@ from typing import Any
 import pytest
 from apache_beam import Create, ParDo
 from apache_beam.io import PubsubMessage
+from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
 from apache_beam.testing.test_pipeline import TestPipeline
 from apache_beam.testing.util import assert_that, equal_to
 
@@ -152,14 +153,17 @@ class TestParseMessage:
         valid_expected: list[dict[str, Any]],
         invalid_expected: list[dict[str, Any]],
     ):
-        with TestPipeline() as p:
+        options = PipelineOptions()
+        standard_options = options.view_as(StandardOptions)
+        standard_options.streaming = True
+        with TestPipeline(options=options) as p:
             valid_actual, _ = (
                 p
                 | Create(create_pubsub_data(data=data, attributes=attributes))
                 | ParDo(ParseMessage()).with_outputs(INVALID_TAG, main=VALID_TAG)
             )
 
-            assert_that(valid_actual, equal_to(valid_expected))
+            assert_that(actual=valid_actual, matcher=equal_to(expected=valid_expected))
 
     def test_invalid(
         self,
@@ -168,6 +172,9 @@ class TestParseMessage:
         valid_expected: list[dict[str, Any]],
         invalid_expected: list[dict[str, Any]],
     ):
+        options = PipelineOptions()
+        standard_options = options.view_as(StandardOptions)
+        standard_options.streaming = True
         with TestPipeline() as p:
             _, invalid_actual = (
                 p
@@ -175,4 +182,6 @@ class TestParseMessage:
                 | ParDo(ParseMessage()).with_outputs(INVALID_TAG, main=VALID_TAG)
             )
 
-            assert_that(invalid_actual, equal_to(invalid_expected))
+            assert_that(
+                actual=invalid_actual, matcher=equal_to(expected=invalid_expected)
+            )
