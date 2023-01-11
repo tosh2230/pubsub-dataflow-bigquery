@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from typing import Any
 
 import pytest
@@ -12,21 +13,43 @@ from dataflow.taxirides_realtime import INVALID_TAG, VALID_TAG, ParseMessage
 
 
 def create_pubsub_data(
-    data: list[dict[str, Any]], attributes: dict[str, str]
+    data: list[dict[str, Any]],
+    attributes: dict[str, str],
+    message_ids: list[str],
+    publish_times: list[datetime],
 ) -> list[PubsubMessage]:
     return [
         PubsubMessage(
             data=json.dumps(element).encode(),
             attributes=attributes,
+            message_id=message_id,
+            publish_time=publish_time,
         )
-        for element in data
+        for element, message_id, publish_time in zip(data, message_ids, publish_times)
     ]
 
 
 @pytest.mark.parametrize(
-    ("data", "attributes", "valid_expected", "invalid_expected"),
+    (
+        "message_ids",
+        "publish_times",
+        "data",
+        "attributes",
+        "valid_expected",
+        "invalid_expected"
+    ),
     [
         (
+            [
+                "000000000000001",
+                "000000000000002",
+                "000000000000003",
+            ],
+            [
+                "2023-01-11 00:00:00.000000 UTC",
+                "2023-01-11 00:00:01.000000 UTC",
+                "2023-01-11 00:00:02.000000 UTC",
+            ],
             [
                 {
                     "ride_id": "test_01",
@@ -80,6 +103,16 @@ def create_pubsub_data(
             [],
         ),
         (
+            [
+                "000000000000004",
+                "000000000000005",
+                "000000000000006",
+            ],
+            [
+                "2023-01-11 00:00:03.000000 UTC",
+                "2023-01-11 00:00:04.000000 UTC",
+                "2023-01-11 00:00:05.000000 UTC",
+            ],
             [
                 {
                     "ride_id": "test_04",
@@ -148,6 +181,8 @@ def create_pubsub_data(
 class TestParseMessage:
     def test_valid(
         self,
+        message_ids: list[str],
+        publish_times: list[datetime],
         data: list[PubsubMessage],
         attributes: dict[str, Any],
         valid_expected: list[dict[str, Any]],
@@ -159,7 +194,14 @@ class TestParseMessage:
         with TestPipeline(options=options) as p:
             valid_actual, _ = (
                 p
-                | Create(create_pubsub_data(data=data, attributes=attributes))
+                | Create(
+                    create_pubsub_data(
+                        data=data,
+                        attributes=attributes,
+                        message_ids=message_ids,
+                        publish_times=publish_times,
+                    )
+                )
                 | ParDo(ParseMessage()).with_outputs(INVALID_TAG, main=VALID_TAG)
             )
 
@@ -167,6 +209,8 @@ class TestParseMessage:
 
     def test_invalid(
         self,
+        message_ids: list[str],
+        publish_times: list[datetime],
         data: list[PubsubMessage],
         attributes: dict[str, Any],
         valid_expected: list[dict[str, Any]],
@@ -178,7 +222,14 @@ class TestParseMessage:
         with TestPipeline() as p:
             _, invalid_actual = (
                 p
-                | Create(create_pubsub_data(data=data, attributes=attributes))
+                | Create(
+                    create_pubsub_data(
+                        data=data,
+                        attributes=attributes,
+                        message_ids=message_ids,
+                        publish_times=publish_times,
+                    )
+                )
                 | ParDo(ParseMessage()).with_outputs(INVALID_TAG, main=VALID_TAG)
             )
 
