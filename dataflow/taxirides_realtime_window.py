@@ -2,11 +2,11 @@ import argparse
 import json
 from logging import INFO, getLogger
 
-from apache_beam import DoFn, ParDo, Pipeline, WindowInto
-from apache_beam.io import BigQueryDisposition, ReadFromPubSub, WriteToBigQuery
-from apache_beam.io.gcp.bigquery_tools import RetryStrategy
+from apache_beam.io import ReadFromPubSub
 from apache_beam.options.pipeline_options import PipelineOptions
+from apache_beam.pipeline import Pipeline
 from apache_beam.transforms.combiners import Count
+from apache_beam.transforms.core import Map, PTransform, WindowInto
 from apache_beam.transforms.window import FixedWindows
 
 logger = getLogger()
@@ -16,6 +16,16 @@ logger.setLevel(INFO)
 def create_count_pair(element):
     data = json.loads(element.data.decode("utf-8"))
     return data["ride_id"], 1
+
+
+class CountInFixedWindow(PTransform):
+    def expand(self, pcoll):
+        return (
+            pcoll
+            | Map(fn=create_count_pair)
+            | WindowInto(windowfn=FixedWindows(size=120))
+            | Count.PerKey()
+        )
 
 
 def main(
@@ -35,9 +45,9 @@ def main(
         >> ReadFromPubSub(
             subscription=input_subscription, with_attributes=True, id_label="message_id"
         )
-        | WindowInto(FixedWindows(120))
-        | Count.PerKey()
+        | CountInFixedWindow()
     )
+    print(count)
 
     pipeline.run()
 

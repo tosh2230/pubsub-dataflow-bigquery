@@ -3,13 +3,15 @@ from datetime import datetime
 from typing import Any
 
 import pytest
-from apache_beam import Create, ParDo
 from apache_beam.io import PubsubMessage
 from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
 from apache_beam.testing.test_pipeline import TestPipeline
-from apache_beam.testing.util import assert_that, equal_to
+from apache_beam.testing.util import TestWindowedValue, assert_that, equal_to
+from apache_beam.transforms.core import Create
+from apache_beam.transforms.window import GlobalWindow
+from apache_beam.utils.timestamp import MIN_TIMESTAMP
 
-from dataflow.taxirides_realtime import INVALID_TAG, VALID_TAG, ParseMessage
+from dataflow.taxirides_realtime import ParseMessages
 
 
 def create_pubsub_data(
@@ -36,7 +38,7 @@ def create_pubsub_data(
         "data",
         "attributes",
         "valid_expected",
-        "invalid_expected"
+        "invalid_expected",
     ),
     [
         (
@@ -81,24 +83,36 @@ def create_pubsub_data(
             ],
             {"attributes_key": "attributes_value"},
             [
-                {
-                    "ride_id": "test_01",
-                    "point_idx": 1,
-                    "latitude": 1,
-                    "longitude": 1,
-                },
-                {
-                    "ride_id": "test_02",
-                    "point_idx": 2,
-                    "latitude": 2,
-                    "longitude": 2,
-                },
-                {
-                    "ride_id": "test_03",
-                    "point_idx": 3,
-                    "latitude": 3,
-                    "longitude": 3,
-                },
+                TestWindowedValue(
+                    value={
+                        "ride_id": "test_01",
+                        "point_idx": 1,
+                        "latitude": 1,
+                        "longitude": 1,
+                    },
+                    timestamp=MIN_TIMESTAMP,
+                    windows=[GlobalWindow()],
+                ),
+                TestWindowedValue(
+                    value={
+                        "ride_id": "test_02",
+                        "point_idx": 2,
+                        "latitude": 2,
+                        "longitude": 2,
+                    },
+                    timestamp=MIN_TIMESTAMP,
+                    windows=[GlobalWindow()],
+                ),
+                TestWindowedValue(
+                    value={
+                        "ride_id": "test_03",
+                        "point_idx": 3,
+                        "latitude": 3,
+                        "longitude": 3,
+                    },
+                    timestamp=MIN_TIMESTAMP,
+                    windows=[GlobalWindow()],
+                ),
             ],
             [],
         ),
@@ -142,38 +156,50 @@ def create_pubsub_data(
             ],
             {"attributes_key": "attributes_value"},
             [
-                {
-                    "ride_id": "test_04",
-                    "point_idx": 1,
-                    "latitude": 1,
-                    "longitude": 1,
-                },
+                TestWindowedValue(
+                    value={
+                        "ride_id": "test_04",
+                        "point_idx": 1,
+                        "latitude": 1,
+                        "longitude": 1,
+                    },
+                    timestamp=MIN_TIMESTAMP,
+                    windows=[GlobalWindow()],
+                )
             ],
             [
-                {
-                    "data": json.dumps(
-                        {
-                            "ride_id": "test_05",
-                            "point_idx": 2,
-                            "latitude": 2,
-                            "test_01": 1,
-                            "test_02": 2,
-                            "test_03": 3,
-                        }
-                    ),
-                },
-                {
-                    "data": json.dumps(
-                        {
-                            "ride_id": "test_06",
-                            "point_idx": 3,
-                            "longitude": 3,
-                            "test_01": 1,
-                            "test_02": 2,
-                            "test_03": 3,
-                        }
-                    ),
-                },
+                TestWindowedValue(
+                    value={
+                        "data": json.dumps(
+                            {
+                                "ride_id": "test_05",
+                                "point_idx": 2,
+                                "latitude": 2,
+                                "test_01": 1,
+                                "test_02": 2,
+                                "test_03": 3,
+                            }
+                        ),
+                    },
+                    timestamp=MIN_TIMESTAMP,
+                    windows=[GlobalWindow()],
+                ),
+                TestWindowedValue(
+                    value={
+                        "data": json.dumps(
+                            {
+                                "ride_id": "test_06",
+                                "point_idx": 3,
+                                "longitude": 3,
+                                "test_01": 1,
+                                "test_02": 2,
+                                "test_03": 3,
+                            }
+                        ),
+                    },
+                    timestamp=MIN_TIMESTAMP,
+                    windows=[GlobalWindow()],
+                ),
             ],
         ),
     ],
@@ -191,6 +217,7 @@ class TestParseMessage:
         options = PipelineOptions()
         standard_options = options.view_as(StandardOptions)
         standard_options.streaming = True
+        standard_options.runner = "DirectRunner"
         with TestPipeline(options=options) as p:
             valid_actual, _ = (
                 p
@@ -202,10 +229,14 @@ class TestParseMessage:
                         publish_times=publish_times,
                     )
                 )
-                | ParDo(ParseMessage()).with_outputs(INVALID_TAG, main=VALID_TAG)
+                | ParseMessages()
             )
 
-            assert_that(actual=valid_actual, matcher=equal_to(expected=valid_expected))
+            assert_that(
+                actual=valid_actual,
+                matcher=equal_to(expected=valid_expected),
+                reify_windows=True,
+            )
 
     def test_invalid(
         self,
@@ -230,9 +261,11 @@ class TestParseMessage:
                         publish_times=publish_times,
                     )
                 )
-                | ParDo(ParseMessage()).with_outputs(INVALID_TAG, main=VALID_TAG)
+                | ParseMessages()
             )
 
             assert_that(
-                actual=invalid_actual, matcher=equal_to(expected=invalid_expected)
+                actual=invalid_actual,
+                matcher=equal_to(expected=invalid_expected),
+                reify_windows=True,
             )

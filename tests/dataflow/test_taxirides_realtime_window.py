@@ -1,16 +1,14 @@
 import json
 from typing import Any
 
-from apache_beam import Map, WindowInto
 from apache_beam.io import PubsubMessage
 from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
-from apache_beam.transforms.combiners import Count
-from apache_beam.transforms.window import FixedWindows
-from apache_beam.testing.test_stream import TestStream
 from apache_beam.testing.test_pipeline import TestPipeline
-from apache_beam.testing.util import assert_that, equal_to
+from apache_beam.testing.test_stream import TestStream
+from apache_beam.testing.util import TestWindowedValue, assert_that, equal_to
+from apache_beam.transforms.window import IntervalWindow, Timestamp
 
-from dataflow.taxirides_realtime_window import create_count_pair
+from dataflow.taxirides_realtime_window import CountInFixedWindow
 
 
 def create_pubsub_data(
@@ -87,11 +85,31 @@ class TestParseMessageInWindow:
             },
         ]
         expected = [
-            ("ride_01", 1),
-            ("ride_02", 2),
-            ("ride_01", 1),
-            ("ride_03", 1),
-            ("ride_04", 1),
+            TestWindowedValue(
+                value=("ride_01", 1),
+                timestamp=Timestamp(119.999999),
+                windows=[IntervalWindow(start=0, end=120)],
+            ),
+            TestWindowedValue(
+                value=("ride_02", 2),
+                timestamp=Timestamp(119.999999),
+                windows=[IntervalWindow(start=0, end=120)],
+            ),
+            TestWindowedValue(
+                value=("ride_01", 1),
+                timestamp=Timestamp(359.999999),
+                windows=[IntervalWindow(start=240, end=360)],
+            ),
+            TestWindowedValue(
+                value=("ride_03", 1),
+                timestamp=Timestamp(359.999999),
+                windows=[IntervalWindow(start=240, end=360)],
+            ),
+            TestWindowedValue(
+                value=("ride_04", 1),
+                timestamp=Timestamp(359.999999),
+                windows=[IntervalWindow(start=240, end=360)],
+            ),
         ]
 
         stream = TestStream()
@@ -115,16 +133,12 @@ class TestParseMessageInWindow:
         options = PipelineOptions()
         standard_options = options.view_as(StandardOptions)
         standard_options.streaming = True
+        standard_options.runner = "DirectRunner"
         with TestPipeline(options=options) as p:
-            actual = (
-                p
-                | stream
-                | Map(create_count_pair)
-                | WindowInto(FixedWindows(120))
-                | Count.PerKey()
-            )
+            actual = p | stream | CountInFixedWindow()
 
             assert_that(
                 actual=actual,
                 matcher=equal_to(expected=expected),
+                reify_windows=True,
             )

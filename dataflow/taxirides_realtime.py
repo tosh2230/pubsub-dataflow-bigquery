@@ -2,11 +2,12 @@ import argparse
 import json
 from logging import INFO, getLogger
 
-from apache_beam import DoFn, ParDo, Pipeline
 from apache_beam.io import BigQueryDisposition, ReadFromPubSub, WriteToBigQuery
 from apache_beam.io.gcp.bigquery_tools import RetryStrategy
 from apache_beam.options.pipeline_options import PipelineOptions
+from apache_beam.pipeline import Pipeline
 from apache_beam.pvalue import TaggedOutput
+from apache_beam.transforms.core import DoFn, ParDo, PTransform
 
 VALID_TAG = "valid"
 INVALID_TAG = "invalid"
@@ -43,9 +44,11 @@ class ParseMessage(DoFn):
             yield TaggedOutput(INVALID_TAG, invalid)
 
 
-def get_schema(output_table) -> str:
-    with open(f"/tmp/{output_table}") as file:
-        return ",".join([line.strip() for line in file.readlines()])
+class ParseMessages(PTransform):
+    def expand(self, pcoll):
+        return pcoll | "Parse JSON messages" >> ParDo(ParseMessage()).with_outputs(
+            INVALID_TAG, main=VALID_TAG
+        )
 
 
 def main(
@@ -69,8 +72,7 @@ def main(
         >> ReadFromPubSub(
             subscription=input_subscription, with_attributes=True, id_label="message_id"
         )
-        | "Parse JSON messages"
-        >> ParDo(ParseMessage()).with_outputs(INVALID_TAG, main=VALID_TAG)
+        | ParseMessages()
     )
 
     _ = rows | "Write messages to BigQuery" >> WriteToBigQuery(
@@ -111,6 +113,11 @@ def parse_args() -> argparse.Namespace | list[str]:
         "--output_error_table", help="Output BigQuery table for errors."
     )
     return parser.parse_known_args()
+
+
+def get_schema(output_table) -> str:
+    with open(f"/tmp/{output_table}") as file:
+        return ",".join([line.strip() for line in file.readlines()])
 
 
 if __name__ == "__main__":
