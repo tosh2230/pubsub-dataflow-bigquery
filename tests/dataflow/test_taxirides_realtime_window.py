@@ -40,7 +40,7 @@ class TestParseMessageInWindow:
                     "test_02": 2,
                     "test_03": 3,
                 },
-                "timestamp": 90
+                "timestamp": 90,
             },
             {
                 "data": {
@@ -52,7 +52,7 @@ class TestParseMessageInWindow:
                     "test_02": 2,
                     "test_03": 3,
                 },
-                "timestamp": 90
+                "timestamp": 90,
             },
             {
                 "data": {
@@ -64,7 +64,7 @@ class TestParseMessageInWindow:
                     "test_02": 2,
                     "test_03": 3,
                 },
-                "timestamp": 90
+                "timestamp": 90,
             },
         ]
         first_late = [
@@ -78,7 +78,7 @@ class TestParseMessageInWindow:
                     "test_02": 2,
                     "test_03": 3,
                 },
-                "timestamp": 119
+                "timestamp": 119,
             }
         ]
         second = [
@@ -92,7 +92,7 @@ class TestParseMessageInWindow:
                     "test_02": 2,
                     "test_03": 3,
                 },
-                "timestamp": 240
+                "timestamp": 240,
             },
             {
                 "data": {
@@ -104,7 +104,7 @@ class TestParseMessageInWindow:
                     "test_02": 2,
                     "test_03": 3,
                 },
-                "timestamp": 240
+                "timestamp": 240,
             },
             {
                 "data": {
@@ -116,7 +116,7 @@ class TestParseMessageInWindow:
                     "test_02": 2,
                     "test_03": 3,
                 },
-                "timestamp": 240
+                "timestamp": 240,
             },
         ]
         expected = [

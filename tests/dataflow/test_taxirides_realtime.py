@@ -8,10 +8,11 @@ from apache_beam.options.pipeline_options import PipelineOptions, StandardOption
 from apache_beam.testing.test_pipeline import TestPipeline
 from apache_beam.testing.util import TestWindowedValue, assert_that, equal_to
 from apache_beam.transforms.core import Create
-from apache_beam.transforms.window import GlobalWindow
-from apache_beam.utils.timestamp import MIN_TIMESTAMP
+from apache_beam.transforms.window import GlobalWindow, TimestampedValue
 
 from dataflow.taxirides_realtime import ParseMessages
+
+ARRIVED_TIMESTAMP = 60
 
 
 def create_pubsub_data(
@@ -21,11 +22,14 @@ def create_pubsub_data(
     publish_times: list[datetime],
 ) -> list[PubsubMessage]:
     return [
-        PubsubMessage(
-            data=json.dumps(element).encode(),
-            attributes=attributes,
-            message_id=message_id,
-            publish_time=publish_time,
+        TimestampedValue(
+            value=PubsubMessage(
+                data=json.dumps(element).encode(),
+                attributes=attributes,
+                message_id=message_id,
+                publish_time=publish_time,
+            ),
+            timestamp=ARRIVED_TIMESTAMP,
         )
         for element, message_id, publish_time in zip(data, message_ids, publish_times)
     ]
@@ -90,7 +94,7 @@ def create_pubsub_data(
                         "latitude": 1,
                         "longitude": 1,
                     },
-                    timestamp=MIN_TIMESTAMP,
+                    timestamp=ARRIVED_TIMESTAMP,
                     windows=[GlobalWindow()],
                 ),
                 TestWindowedValue(
@@ -100,7 +104,7 @@ def create_pubsub_data(
                         "latitude": 2,
                         "longitude": 2,
                     },
-                    timestamp=MIN_TIMESTAMP,
+                    timestamp=ARRIVED_TIMESTAMP,
                     windows=[GlobalWindow()],
                 ),
                 TestWindowedValue(
@@ -110,7 +114,7 @@ def create_pubsub_data(
                         "latitude": 3,
                         "longitude": 3,
                     },
-                    timestamp=MIN_TIMESTAMP,
+                    timestamp=ARRIVED_TIMESTAMP,
                     windows=[GlobalWindow()],
                 ),
             ],
@@ -163,7 +167,7 @@ def create_pubsub_data(
                         "latitude": 1,
                         "longitude": 1,
                     },
-                    timestamp=MIN_TIMESTAMP,
+                    timestamp=ARRIVED_TIMESTAMP,
                     windows=[GlobalWindow()],
                 )
             ],
@@ -181,7 +185,7 @@ def create_pubsub_data(
                             }
                         ),
                     },
-                    timestamp=MIN_TIMESTAMP,
+                    timestamp=ARRIVED_TIMESTAMP,
                     windows=[GlobalWindow()],
                 ),
                 TestWindowedValue(
@@ -197,7 +201,7 @@ def create_pubsub_data(
                             }
                         ),
                     },
-                    timestamp=MIN_TIMESTAMP,
+                    timestamp=ARRIVED_TIMESTAMP,
                     windows=[GlobalWindow()],
                 ),
             ],

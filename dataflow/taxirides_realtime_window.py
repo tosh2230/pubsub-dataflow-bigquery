@@ -7,8 +7,8 @@ from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.pipeline import Pipeline
 from apache_beam.transforms.combiners import Count
 from apache_beam.transforms.core import Map, PTransform, WindowInto
-from apache_beam.transforms.window import FixedWindows, Duration
 from apache_beam.transforms.trigger import AccumulationMode
+from apache_beam.transforms.window import Duration, FixedWindows
 
 logger = getLogger()
 logger.setLevel(INFO)
