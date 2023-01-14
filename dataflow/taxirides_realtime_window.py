@@ -7,7 +7,8 @@ from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.pipeline import Pipeline
 from apache_beam.transforms.combiners import Count
 from apache_beam.transforms.core import Map, PTransform, WindowInto
-from apache_beam.transforms.window import FixedWindows
+from apache_beam.transforms.window import FixedWindows, Duration
+from apache_beam.transforms.trigger import AccumulationMode
 
 logger = getLogger()
 logger.setLevel(INFO)
@@ -23,7 +24,11 @@ class CountInFixedWindow(PTransform):
         return (
             pcoll
             | Map(fn=create_count_pair)
-            | WindowInto(windowfn=FixedWindows(size=120))
+            | WindowInto(
+                windowfn=FixedWindows(size=120),
+                allowed_lateness=Duration(seconds=60),
+                accumulation_mode=AccumulationMode.DISCARDING,
+            )
             | Count.PerKey()
         )
 

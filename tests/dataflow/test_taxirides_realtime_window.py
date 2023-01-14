@@ -6,87 +6,123 @@ from apache_beam.options.pipeline_options import PipelineOptions, StandardOption
 from apache_beam.testing.test_pipeline import TestPipeline
 from apache_beam.testing.test_stream import TestStream
 from apache_beam.testing.util import TestWindowedValue, assert_that, equal_to
-from apache_beam.transforms.window import IntervalWindow, Timestamp
+from apache_beam.transforms.window import IntervalWindow, Timestamp, TimestampedValue
 
 from dataflow.taxirides_realtime_window import CountInFixedWindow
 
 
 def create_pubsub_data(
-    data: list[dict[str, Any]],
+    test_values: list[dict[str, Any]],
     attributes: dict[str, str],
-) -> list[PubsubMessage]:
+) -> list[TimestampedValue]:
     return [
-        PubsubMessage(
-            data=json.dumps(element).encode(),
-            attributes=attributes,
+        TimestampedValue(
+            value=PubsubMessage(
+                data=json.dumps(test_value["data"]).encode(),
+                attributes=attributes,
+            ),
+            timestamp=test_value["timestamp"],
         )
-        for element in data
+        for test_value in test_values
     ]
 
 
 class TestParseMessageInWindow:
     def test_fixed_window(self):
-        first_data = [
+        first = [
             {
-                "ride_id": "ride_01",
-                "point_idx": 1,
-                "latitude": 1,
-                "longitude": 1,
-                "test_01": 1,
-                "test_02": 2,
-                "test_03": 3,
+                "data": {
+                    "ride_id": "ride_01",
+                    "point_idx": 1,
+                    "latitude": 1,
+                    "longitude": 1,
+                    "test_01": 1,
+                    "test_02": 2,
+                    "test_03": 3,
+                },
+                "timestamp": 90
             },
             {
-                "ride_id": "ride_02",
-                "point_idx": 2,
-                "latitude": 2,
-                "longitude": 2,
-                "test_01": 1,
-                "test_02": 2,
-                "test_03": 3,
+                "data": {
+                    "ride_id": "ride_02",
+                    "point_idx": 2,
+                    "latitude": 2,
+                    "longitude": 2,
+                    "test_01": 1,
+                    "test_02": 2,
+                    "test_03": 3,
+                },
+                "timestamp": 90
             },
             {
-                "ride_id": "ride_02",
-                "point_idx": 2,
-                "latitude": 2,
-                "longitude": 2,
-                "test_01": 1,
-                "test_02": 2,
-                "test_03": 3,
+                "data": {
+                    "ride_id": "ride_02",
+                    "point_idx": 2,
+                    "latitude": 2,
+                    "longitude": 2,
+                    "test_01": 1,
+                    "test_02": 2,
+                    "test_03": 3,
+                },
+                "timestamp": 90
             },
         ]
-        second_data = [
+        first_late = [
             {
-                "ride_id": "ride_03",
-                "point_idx": 3,
-                "latitude": 3,
-                "longitude": 3,
-                "test_01": 1,
-                "test_02": 2,
-                "test_03": 3,
+                "data": {
+                    "ride_id": "ride_01",
+                    "point_idx": 1,
+                    "latitude": 1,
+                    "longitude": 1,
+                    "test_01": 1,
+                    "test_02": 2,
+                    "test_03": 3,
+                },
+                "timestamp": 119
+            }
+        ]
+        second = [
+            {
+                "data": {
+                    "ride_id": "ride_03",
+                    "point_idx": 3,
+                    "latitude": 3,
+                    "longitude": 3,
+                    "test_01": 1,
+                    "test_02": 2,
+                    "test_03": 3,
+                },
+                "timestamp": 240
             },
             {
-                "ride_id": "ride_04",
-                "point_idx": 4,
-                "latitude": 4,
-                "longitude": 4,
-                "test_01": 1,
-                "test_02": 2,
-                "test_03": 3,
+                "data": {
+                    "ride_id": "ride_04",
+                    "point_idx": 4,
+                    "latitude": 4,
+                    "longitude": 4,
+                    "test_01": 1,
+                    "test_02": 2,
+                    "test_03": 3,
+                },
+                "timestamp": 240
             },
             {
-                "ride_id": "ride_01",
-                "point_idx": 1,
-                "latitude": 1,
-                "longitude": 1,
-                "test_01": 1,
-                "test_02": 2,
-                "test_03": 3,
+                "data": {
+                    "ride_id": "ride_01",
+                    "point_idx": 1,
+                    "latitude": 1,
+                    "longitude": 1,
+                    "test_01": 1,
+                    "test_02": 2,
+                    "test_03": 3,
+                },
+                "timestamp": 240
             },
         ]
         expected = [
+            # First window considers late arrived data
             TestWindowedValue(
-                value=("ride_01", 1),
+                value=("ride_01", 2),
                 timestamp=Timestamp(119.999999),
                 windows=[IntervalWindow(start=0, end=120)],
             ),
@@ -113,21 +149,28 @@ class TestParseMessageInWindow:
         ]
 
         stream = TestStream()
-        stream.advance_processing_time(advance_by=120)
-        stream.advance_watermark_to(new_watermark=60)
+        stream.advance_watermark_to(new_watermark=0)
+        stream.advance_processing_time(advance_by=90)
         stream.add_elements(
             elements=create_pubsub_data(
-                data=first_data,
+                test_values=first,
                 attributes={},
             ),
-            event_timestamp=90,
         )
+        stream.advance_processing_time(advance_by=180)
         stream.add_elements(
             elements=create_pubsub_data(
-                data=second_data,
+                test_values=first_late,
                 attributes={},
             ),
-            event_timestamp=240,
+        )
+        stream.advance_watermark_to(new_watermark=180)
+        stream.advance_processing_time(advance_by=240)
+        stream.add_elements(
+            elements=create_pubsub_data(
+                test_values=second,
+                attributes={},
+            ),
         )
 
         options = PipelineOptions()
